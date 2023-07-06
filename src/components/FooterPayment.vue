@@ -1,7 +1,7 @@
 <template>
   <div class="footer-payment">
     <div class="div-show-price">
-      Order price: <strong>¥{{ priceTotal }}</strong>
+      Order price: <strong>¥{{ addCommas(priceTotal) }}</strong>
     </div>
     <button type="button" class="button">Cart</button>
   </div>

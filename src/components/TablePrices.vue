@@ -33,7 +33,7 @@
                 Delivery in {{ price.business_day }} business days X Quantity
                 {{ price.quantity }}
               </div>
-              <div>Price: ¥{{ price.price }}</div>
+              <div>Price: ¥{{ addCommas(price.price) }}</div>
 
               <span class="tooltiptext">
                 Delivery in {{ price.business_day }} business days X Quantity
