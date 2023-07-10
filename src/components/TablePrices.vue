@@ -15,34 +15,38 @@
     </div>
 
     <table>
-      <tbody>
-        <tr
-          v-for="(priceBlock, priceCellRow) in pricesAllowToShow"
-          :key="priceCellRow"
-        >
-          <td
-            v-for="(price, priceCellColumn) in priceBlock"
-            :key="priceCellColumn"
-            :class="renderCell({priceCellRow, priceCellColumn})"
-            class="tooltip"
-            @click.stop="clickPriceCell({priceCellRow, priceCellColumn})"
-            @mouseover="mouseoverCell({priceCellRow, priceCellColumn})"
-          >
-            <div class="td-content">
-              <div>
-                Delivery in {{ price.business_day }} business days X Quantity
-                {{ price.quantity }}
-              </div>
-              <div>Price: ¥{{ addCommas(price.price) }}</div>
+      <tr class="column-header-business-day">
+        <th></th>
+        <th v-for="(header, headerIndex) in priceHeaders" :key="headerIndex">
+          {{ `Delivery in ${header} business days` }}
+        </th>
+      </tr>
 
-              <span class="tooltiptext">
-                Delivery in {{ price.business_day }} business days X Quantity
-                {{ price.quantity }}
-              </span>
-            </div>
-          </td>
-        </tr>
-      </tbody>
+      <tr
+        v-for="(priceBlock, priceCellRow) in pricesAllowToShow"
+        :key="priceCellRow"
+      >
+        <td class="cell-header-quantity">
+          {{ priceBlock[0] ? `Quantity ${priceBlock[0].quantity}` : '' }}
+        </td>
+        <td
+          v-for="(price, priceCellColumn) in priceBlock"
+          :key="priceCellColumn"
+          :class="renderCell({priceCellRow, priceCellColumn})"
+          class="tooltip"
+          @click.stop="clickPriceCell({priceCellRow, priceCellColumn})"
+          @mouseover="mouseoverCell({priceCellRow, priceCellColumn})"
+        >
+          <div class="td-content">
+            <div>Price: ¥{{ addCommas(price.price) }}</div>
+
+            <span class="tooltiptext">
+              Delivery in {{ price.business_day }} business days X Quantity
+              {{ price.quantity }}
+            </span>
+          </div>
+        </td>
+      </tr>
     </table>
   </div>
 </template>
@@ -53,8 +57,8 @@ import {mapMutations, mapState} from 'vuex';
 export default {
   data() {
     return {
-      selectedPriceCells: [],
-      selectedPrices: [],
+      selectedPriceCells: null,
+      selectedPrices: null,
 
       initialDisplayRow: true,
 
@@ -70,10 +74,7 @@ export default {
   },
   watch: {
     selectedPrices(newVal) {
-      let priceTotal = 0;
-      newVal.forEach((selectedPrice) => (priceTotal += selectedPrice.price));
-
-      this.SET_PRICE_TOTAL(priceTotal);
+      this.SET_PRICE_TOTAL(newVal.price);
     },
   },
   computed: {
@@ -84,6 +85,15 @@ export default {
         return this.pricesByPaperSize.slice(0, this.DEFAULT_ROW_SHOW);
       }
       return this.pricesByPaperSize;
+    },
+
+    priceHeaders() {
+      if (this.pricesByPaperSize.length > 0) {
+        let firstPriceBlock = this.pricesByPaperSize[0];
+        return firstPriceBlock.map((price) => price.business_day);
+      }
+
+      return [];
     },
   },
   methods: {
@@ -103,29 +113,21 @@ export default {
 
     changeDisplayRows() {
       this.initialDisplayRow = !this.initialDisplayRow;
-      this.selectedPriceCells = [];
-      this.selectedPrices = [];
+      this.selectedPriceCells = null;
+      this.selectedPrices = null;
       this.SET_PRICE_TOTAL([]);
     },
 
-    findSelectedPriceCell({priceCellRow, priceCellColumn}) {
-      return this.selectedPriceCells.findIndex((cell) => {
-        return (
-          cell.priceCellRow === priceCellRow &&
-          cell.priceCellColumn === priceCellColumn
-        );
-      });
-    },
-
     renderCell({priceCellRow, priceCellColumn}) {
-      let findIndexOfCurrentCell = this.findSelectedPriceCell({
-        priceCellRow,
-        priceCellColumn,
-      });
-      if (findIndexOfCurrentCell >= 0) {
+      if (
+        this.selectedPriceCells &&
+        this.selectedPriceCells.priceCellRow >= 0 &&
+        this.selectedPriceCells.priceCellColumn >= 0 &&
+        this.selectedPriceCells.priceCellRow === priceCellRow &&
+        this.selectedPriceCells.priceCellColumn === priceCellColumn
+      ) {
         return this.CLASS_CELL_SELECTED;
       }
-
       if (
         this.currentHighlightedCell.cellRow >= 0 &&
         this.currentHighlightedCell.cellColumn >= 0
@@ -151,27 +153,9 @@ export default {
         return;
       }
 
-      let findIndexOfClickedCell = this.findSelectedPriceCell({
-        priceCellRow,
-        priceCellColumn,
-      });
-
-      if (findIndexOfClickedCell >= 0) {
-        this.selectedPriceCells = this.selectedPriceCells.filter(
-          (cell, index) => {
-            return index !== findIndexOfClickedCell;
-          },
-        );
-
-        this.selectedPrices = this.selectedPrices.filter((price, index) => {
-          return index !== findIndexOfClickedCell;
-        });
-      } else {
-        this.selectedPriceCells.push({priceCellRow, priceCellColumn});
-        this.selectedPrices.push(
-          this.pricesByPaperSize[priceCellRow][priceCellColumn],
-        );
-      }
+      this.selectedPriceCells = {priceCellRow, priceCellColumn};
+      this.selectedPrices =
+        this.pricesByPaperSize[priceCellRow][priceCellColumn];
     },
   },
 };
@@ -208,10 +192,15 @@ td {
   border-collapse: collapse;
 }
 
+.column-header-business-day > th,
+.cell-header-quantity {
+  background-color: rgb(209, 208, 208);
+  border: 1px solid rgb(225, 224, 224);
+}
+
 td .td-content {
   cursor: pointer;
   background-color: rgb(255, 255, 255);
-  height: 118px;
 }
 
 .td-content div {
